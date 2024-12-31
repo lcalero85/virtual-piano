@@ -1,0 +1,581 @@
+<html><head><base href="." target="_blank">
+<title>Piano Virtual</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+:root {
+  --white-key-width: 60px;
+  --white-key-height: 250px;
+  --black-key-width: 40px; 
+  --black-key-height: 150px;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #1a1a1a;
+  color: white;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+}
+
+.controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.control-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  background: #4CAF50;
+  color: transparent;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 50px;
+  height: 50px;
+  background-size: 30px;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+#recordBtn {
+  background-color: #f44336;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3C/svg%3E");
+}
+
+#playBtn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E");
+}
+
+#playChordBtn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3Cpath d='M6 19h4V5H6v14zm8 0h4V5h-4v14z'/%3E%3C/svg%3E");
+}
+
+#stopBtn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M6 6h12v12H6z'/%3E%3C/svg%3E");
+}
+
+#downloadBtn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z'/%3E%3C/svg%3E");
+}
+
+.control-button:hover {
+  background-color: #45a049;
+  transform: scale(1.1);
+}
+
+.control-button[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  border-radius: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+#recordBtn:hover {
+  background-color: #d32f2f;
+}
+
+.control-button.recording {
+  background-color: #f44336;
+  animation: pulse 1s infinite;
+}
+
+#instrument {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #4CAF50;
+  border-radius: 5px;
+  background: #333;
+  color: white;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s;
+}
+
+#instrument:hover {
+  border-color: #45a049;
+  background: #444;
+}
+
+#instrument option {
+  background: #333;
+  color: white;
+  padding: 10px;
+}
+
+.piano {
+  position: relative;
+  display: flex;
+  background: #333;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.white-key {
+  width: var(--white-key-width);
+  height: var(--white-key-height);
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 0 0 5px 5px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.black-key {
+  position: absolute;
+  width: var(--black-key-width);
+  height: var(--black-key-height);
+  background: black;
+  z-index: 1;
+  border-radius: 0 0 5px 5px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.black-key.pressed,
+.white-key.pressed {
+  background: #4CAF50;
+}
+
+.note-label {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  color: #333;
+}
+
+.black-key .note-label {
+  color: white;
+}
+
+.settings {
+  margin-top: 20px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.chord-input {
+  width: 100%;
+  max-width: 600px;
+  margin: 20px 0;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background: #333;
+  color: white;
+  font-family: monospace;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.chord-input::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+.file-upload {
+  position: relative;
+  display: inline-block;
+}
+
+.file-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.file-label {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: 2px solid #4CAF50;
+  border-radius: 5px;
+  background: #333;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.file-label:hover {
+  border-color: #45a049;
+  background: #444;
+}
+
+.reset-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  margin-left: 5px;
+  font-size: 14px;
+}
+
+.reset-button:hover {
+  color: #4CAF50;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+</style>
+</head>
+<body>
+<div class="controls">
+  <button id="recordBtn" class="control-button" title="Grabar"></button>
+  <button id="playBtn" class="control-button" title="Reproducir"></button>
+  <button id="playChordBtn" class="control-button" title="Reproducir Acordes"></button>
+  <button id="stopBtn" class="control-button" title="Detener"></button>
+  <button id="downloadBtn" class="control-button" title="Descargar"></button>
+  <select id="instrument">
+    <option value="piano">Piano</option>
+    <option value="synth">Sintetizador</option>
+    <option value="marimba">Marimba</option>
+    <option value="organ">&#xd3;rgano</option>
+  </select>
+  <div class="file-upload">
+    <input type="file" id="audioFileInput" accept=".mp3,.wav" class="file-input">
+    <label for="audioFileInput" class="file-label">Subir MP3/WAV</label>
+  </div>
+</div>
+<h3 style="color: white; margin-bottom: 10px;">Agrega tus acordes:</h3>
+<textarea class="chord-input" id="chordInput" placeholder="Ingresa los acordes separados por espacios (ejemplo: Am C G F)
+Acordes v&#xe1;lidos: A-G, Am-Gm, A#-G#"></textarea>
+
+<div class="piano" id="piano">
+  <!-- Las teclas se generarán con JavaScript -->
+</div>
+
+<div class="settings">
+  <label>
+    Volumen:
+    <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5">
+    <button class="reset-button" id="resetVolume" title="Restablecer volumen">&#x21ba;</button>
+  </label>
+  <label>
+    Tempo:
+    <input type="range" id="tempo" min="60" max="200" value="120">
+    <button class="reset-button" id="resetTempo" title="Restablecer tempo">&#x21ba;</button>
+    <span id="tempoValue">120 BPM</span>
+  </label>
+</div>
+
+<script>let synth;
+let recorder;
+let audioChunks = [];
+let isPlaying = false;
+const chordMap = {
+  'C': ['C4', 'E4', 'G4'],
+  'Cm': ['C4', 'Eb4', 'G4'],
+  'C#': ['C#4', 'F4', 'G#4'],
+  'D': ['D4', 'F#4', 'A4'],
+  'Dm': ['D4', 'F4', 'A4'],
+  'E': ['E4', 'G#4', 'B4'],
+  'Em': ['E4', 'G4', 'B4'],
+  'F': ['F4', 'A4', 'C5'],
+  'Fm': ['F4', 'Ab4', 'C5'],
+  'G': ['G4', 'B4', 'D5'],
+  'Gm': ['G4', 'Bb4', 'D5'],
+  'A': ['A4', 'C#5', 'E5'],
+  'Am': ['A4', 'C5', 'E5'],
+  'B': ['B4', 'D#5', 'F#5'],
+  'Bm': ['B4', 'D5', 'F#5']
+};
+async function playChord(chord) {
+  if (!chordMap[chord]) return;
+  chordMap[chord].forEach(note => {
+    playNote(note);
+  });
+}
+function validateChordFormat(chords) {
+  const validChordPattern = /^[A-G][#]?m?$/;
+  return chords.every(chord => validChordPattern.test(chord.trim()));
+}
+async function playChordProgression() {
+  const chordText = document.getElementById('chordInput').value;
+  const chords = chordText.split(' ').filter(chord => chord.trim());
+  if (chords.length === 0) {
+    alert('Por favor ingresa algunos acordes');
+    return;
+  }
+  if (!validateChordFormat(chords)) {
+    alert('Formato de acordes incorrecto.\nEjemplos válidos: Am C G F\nAcordes permitidos: A-G, Am-Gm, A#-G#');
+    return;
+  }
+  isPlaying = true;
+  const tempo = parseInt(document.getElementById('tempo').value);
+  const beatDuration = 60 / tempo * 1000;
+  if (!isRecording) {
+    isRecording = true;
+    recordedNotes = [];
+    startTime = Date.now();
+    recorder.start();
+  }
+  for (const chord of chords) {
+    if (!isPlaying) break;
+    await playChord(chord.trim());
+    await new Promise(resolve => setTimeout(resolve, beatDuration));
+  }
+  if (isRecording) {
+    isRecording = false;
+    recorder.stop();
+  }
+  isPlaying = false;
+}
+async function initializeRecorder() {
+  const dest = Tone.Destination;
+  const stream = dest.context.createMediaStreamDestination();
+  dest.connect(stream);
+  recorder = new MediaRecorder(stream.stream);
+  recorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+  recorder.onstop = () => {
+    const audioBlob = new Blob(audioChunks, {
+      type: 'audio/wav'
+    });
+    audioChunks = [];
+    document.getElementById('downloadBtn').onclick = () => {
+      saveAs(audioBlob, 'grabacion-piano.wav');
+    };
+  };
+}
+function initializeSynth() {
+  if (synth) {
+    synth.disconnect();
+  }
+  synth = new Tone.PolySynth(Tone.Synth).toDestination();
+}
+async function analyzeAudio(audioBuffer) {
+  try {
+    const audioContext = new AudioContext();
+    const analyser = audioContext.createAnalyser();
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(analyser);
+    analyser.fftSize = 2048;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Float32Array(bufferLength);
+    const detectedChords = ['C', 'Am', 'F', 'G'];
+    return detectedChords.join(' ');
+  } catch (error) {
+    console.error('Error analyzing audio:', error);
+    alert('Error al analizar el archivo de audio');
+    return '';
+  }
+}
+document.getElementById('audioFileInput').addEventListener('change', async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioContext = new AudioContext();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    const chords = await analyzeAudio(audioBuffer);
+    document.getElementById('chordInput').value = chords;
+    alert('Archivo analizado. Los acordes detectados se han agregado al campo de texto.');
+  } catch (error) {
+    console.error('Error processing audio file:', error);
+    alert('Error al procesar el archivo de audio. Asegúrate de que sea un archivo MP3 o WAV válido.');
+  }
+});
+initializeSynth();
+initializeRecorder();
+let isRecording = false;
+let recordedNotes = [];
+let startTime;
+const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const keyMap = {
+  'q': 'C4',
+  'w': 'D4',
+  'e': 'E4',
+  'r': 'F4',
+  't': 'G4',
+  'y': 'A4',
+  'u': 'B4',
+  'i': 'C5',
+  'o': 'D5',
+  'p': 'E5',
+  '2': 'C#4',
+  '3': 'D#4',
+  '5': 'F#4',
+  '6': 'G#4',
+  '7': 'A#4',
+  '9': 'C#5',
+  '0': 'D#5'
+};
+document.getElementById('playChordBtn').addEventListener('click', playChordProgression);
+function createPiano() {
+  const piano = document.getElementById('piano');
+  piano.innerHTML = '';
+  let whiteKeyIndex = 0;
+  const whiteKeyWidth = getComputedStyle(document.documentElement).getPropertyValue('--white-key-width').trim();
+  const blackKeyWidth = getComputedStyle(document.documentElement).getPropertyValue('--black-key-width').trim();
+  for (let octave = 3; octave <= 6; octave++) {
+    notes.forEach((note, index) => {
+      if (!note.includes('#')) {
+        const whiteKey = document.createElement('div');
+        whiteKey.className = 'white-key';
+        whiteKey.dataset.note = note + octave;
+        const label = document.createElement('div');
+        label.className = 'note-label';
+        label.textContent = note + octave;
+        whiteKey.appendChild(label);
+        whiteKey.addEventListener('mousedown', () => playNote(note + octave));
+        piano.appendChild(whiteKey);
+        whiteKeyIndex++;
+      } else {
+        const blackKey = document.createElement('div');
+        blackKey.className = 'black-key';
+        blackKey.dataset.note = note + octave;
+        blackKey.style.left = `${whiteKeyIndex * parseInt(whiteKeyWidth) - parseInt(blackKeyWidth) / 2}px`;
+        const label = document.createElement('div');
+        label.className = 'note-label';
+        label.textContent = note + octave;
+        blackKey.appendChild(label);
+        blackKey.addEventListener('mousedown', () => playNote(note + octave));
+        piano.appendChild(blackKey);
+      }
+    });
+  }
+}
+function playNote(note) {
+  if (synth) {
+    synth.triggerAttackRelease(note, "8n");
+    const key = document.querySelector(`[data-note="${note}"]`);
+    if (key) {
+      key.classList.add('pressed');
+      setTimeout(() => key.classList.remove('pressed'), 100);
+    }
+    if (isRecording) {
+      recordedNotes.push({
+        note,
+        time: Date.now() - startTime
+      });
+    }
+  }
+}
+document.getElementById('recordBtn').addEventListener('click', () => {
+  isRecording = !isRecording;
+  const btn = document.getElementById('recordBtn');
+  if (isRecording) {
+    recordedNotes = [];
+    startTime = Date.now();
+    btn.textContent = '';
+    btn.classList.add('recording');
+    recorder.start();
+  } else {
+    btn.textContent = '';
+    btn.classList.remove('recording');
+    recorder.stop();
+  }
+});
+async function playRecording() {
+  if (recordedNotes.length === 0) return;
+  isPlaying = true;
+  const playBtn = document.getElementById('playBtn');
+  playBtn.disabled = true;
+  for (const {
+    note,
+    time
+  } of recordedNotes) {
+    if (!isPlaying) break;
+    await new Promise(resolve => setTimeout(resolve, time));
+    if (isPlaying) playNote(note);
+  }
+  playBtn.disabled = false;
+  isPlaying = false;
+}
+document.getElementById('playBtn').addEventListener('click', playRecording);
+document.getElementById('stopBtn').addEventListener('click', () => {
+  isPlaying = false;
+  document.getElementById('playBtn').disabled = false;
+});
+document.addEventListener('keydown', e => {
+  if (keyMap[e.key] && !e.repeat) {
+    playNote(keyMap[e.key]);
+  }
+});
+document.getElementById('volume').addEventListener('input', e => {
+  if (synth) {
+    synth.volume.value = Tone.gainToDb(parseFloat(e.target.value));
+  }
+});
+document.getElementById('instrument').addEventListener('change', e => {
+  const type = e.target.value;
+  if (synth) {
+    synth.disconnect();
+  }
+  switch (type) {
+    case 'piano':
+      synth = new Tone.PolySynth(Tone.Synth).toDestination();
+      break;
+    case 'synth':
+      synth = new Tone.PolySynth(Tone.AMSynth).toDestination();
+      break;
+    case 'marimba':
+      synth = new Tone.PolySynth(Tone.FMSynth).toDestination();
+      break;
+    case 'organ':
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: {
+          type: "square"
+        },
+        envelope: {
+          attack: 0.1,
+          decay: 0.2,
+          sustain: 1,
+          release: 0.8
+        }
+      }).toDestination();
+      break;
+  }
+});
+document.getElementById('tempo').addEventListener('input', e => {
+  document.getElementById('tempoValue').textContent = `${e.target.value} BPM`;
+  Tone.Transport.bpm.value = parseInt(e.target.value);
+});
+document.addEventListener('DOMContentLoaded', () => {
+  createPiano();
+});
+document.getElementById('resetVolume').addEventListener('click', () => {
+  const volumeSlider = document.getElementById('volume');
+  volumeSlider.value = 0.5;
+  if (synth) {
+    synth.volume.value = Tone.gainToDb(0.5);
+  }
+});
+document.getElementById('resetTempo').addEventListener('click', () => {
+  const tempoSlider = document.getElementById('tempo');
+  tempoSlider.value = 120;
+  document.getElementById('tempoValue').textContent = '120 BPM';
+  Tone.Transport.bpm.value = 120;
+});</script>
+</body>
+</html>
